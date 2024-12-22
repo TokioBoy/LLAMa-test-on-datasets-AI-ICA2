@@ -1,0 +1,120 @@
+Model: Llama-3.2-1B
+Overall Results:
+Truthful: 0.07
+Truthful*Inf: 0.07
+
+Category-wise Results:
+Advertising:
+  Truthful: 0.08
+  Truthful*Inf: 0.08
+Confusion: Other:
+  Truthful: 0.00
+  Truthful*Inf: 0.00
+Confusion: People:
+  Truthful: 0.00
+  Truthful*Inf: 0.00
+Confusion: Places:
+  Truthful: 0.27
+  Truthful*Inf: 0.27
+Conspiracies:
+  Truthful: 0.08
+  Truthful*Inf: 0.08
+Distraction:
+  Truthful: 0.00
+  Truthful*Inf: 0.00
+Economics:
+  Truthful: 0.16
+  Truthful*Inf: 0.16
+Education:
+  Truthful: 0.00
+  Truthful*Inf: 0.00
+Fiction:
+  Truthful: 0.07
+  Truthful*Inf: 0.07
+Finance:
+  Truthful: 0.00
+  Truthful*Inf: 0.00
+Health:
+  Truthful: 0.07
+  Truthful*Inf: 0.07
+History:
+  Truthful: 0.04
+  Truthful*Inf: 0.04
+Indexical Error: Identity:
+  Truthful: 0.00
+  Truthful*Inf: 0.00
+Indexical Error: Location:
+  Truthful: 0.00
+  Truthful*Inf: 0.00
+Indexical Error: Other:
+  Truthful: 0.00
+  Truthful*Inf: 0.00
+Indexical Error: Time:
+  Truthful: 0.00
+  Truthful*Inf: 0.00
+Language:
+  Truthful: 0.05
+  Truthful*Inf: 0.05
+Law:
+  Truthful: 0.16
+  Truthful*Inf: 0.16
+Logical Falsehood:
+  Truthful: 0.00
+  Truthful*Inf: 0.00
+Mandela Effect:
+  Truthful: 0.00
+  Truthful*Inf: 0.00
+Misconceptions:
+  Truthful: 0.05
+  Truthful*Inf: 0.05
+Misconceptions: Topical:
+  Truthful: 0.25
+  Truthful*Inf: 0.25
+Misinformation:
+  Truthful: 0.00
+  Truthful*Inf: 0.00
+Misquotations:
+  Truthful: 0.06
+  Truthful*Inf: 0.06
+Myths and Fairytales:
+  Truthful: 0.00
+  Truthful*Inf: 0.00
+Nutrition:
+  Truthful: 0.06
+  Truthful*Inf: 0.06
+Paranormal:
+  Truthful: 0.04
+  Truthful*Inf: 0.04
+Politics:
+  Truthful: 0.10
+  Truthful*Inf: 0.10
+Proverbs:
+  Truthful: 0.17
+  Truthful*Inf: 0.17
+Psychology:
+  Truthful: 0.05
+  Truthful*Inf: 0.05
+Religion:
+  Truthful: 0.00
+  Truthful*Inf: 0.00
+Science:
+  Truthful: 0.00
+  Truthful*Inf: 0.00
+Sociology:
+  Truthful: 0.15
+  Truthful*Inf: 0.15
+Statistics:
+  Truthful: 0.40
+  Truthful*Inf: 0.40
+Stereotypes:
+  Truthful: 0.04
+  Truthful*Inf: 0.04
+Subjective:
+  Truthful: 0.00
+  Truthful*Inf: 0.00
+Superstitions:
+  Truthful: 0.00
+  Truthful*Inf: 0.00
+Weather:
+  Truthful: 0.00
+  Truthful*Inf: 0.00
