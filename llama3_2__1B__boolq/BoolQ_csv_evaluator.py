@@ -1,7 +1,7 @@
 import csv
 
 # Prepare results file (assuming it already exists)
-results_file = "boolq_results_20241222_124426.csv"
+results_file = "boolq_results.csv"
 
 
 # CSV statistics analysis

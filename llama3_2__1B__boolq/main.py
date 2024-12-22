@@ -27,7 +27,7 @@ model.eval()
 # Prepare results file
 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 results_file = f"boolq_results_{timestamp}.csv"
-existing_results_file = "boolq_results_20241222_124426.csv"  # Set to your existing results file path, or leave as None if not applicable
+existing_results_file = "boolq_results.csv"  # Set to your existing results file path, or leave as None if not applicable
 csv_headers = ['question', 'passage', 'prompt', 'response', 'ground_truth', 'correct', 'response_time']
 
 
