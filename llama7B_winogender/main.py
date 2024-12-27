@@ -6,7 +6,7 @@ from datasets import load_dataset
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from tqdm import tqdm
 
-# Load WinoGender dataset
+# Load WinoGrande dataset
 dataset = load_dataset("oskarvanderwal/winogender", "all")
 
 # Load the LLaMA model and tokenizer

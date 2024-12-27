@@ -6,13 +6,13 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 from tqdm import tqdm
 from datetime import datetime
 
-# Load OpenBookQA dataset
-print("Loading OpenBookQA dataset...")
-ds = load_dataset("allenai/openbookqa", "main")
+# Load dataset
+print("Loading BoolQ dataset...")
+ds = load_dataset("google/boolq")
 
 # Load model and tokenizer
 print("Loading model and tokenizer...")
-model_name = "meta-llama/Llama-3.2-1B"
+model_name = "huggyllama/llama-7b"
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 if tokenizer.pad_token is None:
     tokenizer.pad_token = tokenizer.eos_token
@@ -26,28 +26,20 @@ model.eval()
 
 # Prepare results file
 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-results_file = f"openbookqa_results_{timestamp}.csv"
-existing_results_file = "openbookqa_results.csv"  # Path to existing results file, if any
-csv_headers = ['id', 'question', 'choices', 'prompt', 'response', 'ground_truth', 'correct', 'response_time']
+results_file = f"boolq_results_{timestamp}.csv"
+existing_results_file = "boolq_results.csv"  # Set to your existing results file path, or leave as None if not applicable
+csv_headers = ['question', 'passage', 'prompt', 'response', 'ground_truth', 'correct', 'response_time']
 
 
-def create_prompt(question_stem, choices_text):
-    """
-    Create a prompt for OpenBookQA questions.
-    """
-    choices_str = "\n".join([f"{chr(65 + i)}: {choice}" for i, choice in enumerate(choices_text)])
-    return f"""Question: {question_stem}
-Choices:
-{choices_str}
-Which option (A, B, C, or D) is correct?
+def create_prompt(question, passage):
+    return f"""Question: {question}
+Context: {passage}
+Is this statement true? Answer with yes or no.
 
 Answer:"""
 
 
 def get_model_response(prompt):
-    """
-    Get the model's response to the provided prompt.
-    """
     inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
 
     with torch.no_grad():
@@ -60,19 +52,23 @@ def get_model_response(prompt):
             do_sample=False
         )
 
-    return tokenizer.decode(outputs[0][inputs.input_ids.shape[1]:], skip_special_tokens=True).strip()
+    return tokenizer.decode(outputs[0][inputs.input_ids.shape[1]:], skip_special_tokens=True).strip().lower()
 
 
-def evaluate_response(response, answer_key):
-    """
-    Evaluate the model's response against the correct answer key.
-    """
-    if response and response[0].upper() in "ABCD":
-        return response[0].upper() == answer_key
-    return False
+def evaluate_response(response, label):
+    first_word = response.split()[0] if response else ""
+
+    if first_word in ["yes", "true"]:
+        pred = True
+    elif first_word in ["no", "false"]:
+        pred = False
+    else:
+        return False
+
+    return pred == label
 
 
-# Load existing results into a dictionary for prompt lookup
+# Load existing results into a set for prompt lookup
 processed_prompts = {}
 if existing_results_file and os.path.exists(existing_results_file):
     print(f"Loading existing results from {existing_results_file}...")
@@ -91,22 +87,22 @@ with open(results_file, 'w', newline='', encoding='utf-8') as f:
 # Initialize counters and timers
 correct = 0
 total = 0
+processed_count = 0  # Counter for processed questions
+limit = 327  # Limit for number of questions to process
 total_response_time = 0.0  # To track cumulative response time
 
 # Evaluation loop
 print("Starting evaluation...")
-for split in ['validation']:  # Adjust split if needed
+for split in ['validation']:  # Adjust split to match dataset
     print(f"\nEvaluating {split} split...")
 
     for example in tqdm(ds[split]):
-        # Extract question, choices, and answer key
-        question_stem = example['question_stem']
-        choices_text = example['choices']['text']
-        answer_key = example['answerKey']
-        question_id = example['id']
+        if processed_count >= limit:
+            print(f"Reached processing limit of {limit} questions. Stopping.")
+            break
 
         # Create prompt
-        prompt = create_prompt(question_stem, choices_text)
+        prompt = create_prompt(example['question'], example['passage'])
 
         # Check if prompt has already been processed
         if prompt in processed_prompts:
@@ -117,6 +113,7 @@ for split in ['validation']:  # Adjust split if needed
             correct += 1 if is_correct else 0
             total += 1
             total_response_time += response_time
+            processed_count += 1  # Increment processed count
 
             # Copy existing result to the new CSV file
             with open(results_file, 'a', newline='', encoding='utf-8') as f:
@@ -133,21 +130,21 @@ for split in ['validation']:  # Adjust split if needed
         total_response_time += response_time  # Accumulate response time
 
         # Evaluate response
-        is_correct = evaluate_response(response, answer_key)
+        is_correct = evaluate_response(response, example['answer'])
 
         # Update counters
         if is_correct:
             correct += 1
         total += 1
+        processed_count += 1  # Increment processed count
 
         # Save new result
         result = {
-            'id': question_id,
-            'question': question_stem,
-            'choices': choices_text,
+            'question': example['question'],
+            'passage': example['passage'],
             'prompt': prompt,
             'response': response,
-            'ground_truth': answer_key,
+            'ground_truth': example['answer'],
             'correct': is_correct,
             'response_time': response_time
         }
@@ -157,10 +154,13 @@ for split in ['validation']:  # Adjust split if needed
             writer.writerow(result)
 
         # Print progress
-        print(f"\nProcessed question ID: {question_id}")
+        print(f"\nProcessed prompt: {prompt}")
         print(f"Model response: {response}")
         print(f"Correct: {is_correct}")
         print(f"Current accuracy: {(correct / total) * 100:.2f}%")
+
+    if processed_count >= limit:
+        break  # Exit the outer loop if the limit is reached
 
 # Calculate average response time
 avg_response_time = total_response_time / total if total > 0 else 0
