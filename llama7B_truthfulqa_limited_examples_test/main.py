@@ -73,6 +73,9 @@ with open(csv_file, mode="w", newline="", encoding="utf-8") as f:
     writer.writeheader()
 
     for idx, example in enumerate(tqdm(test_data)):
+        if idx >= 81:  # Limit to 81 examples (10%)
+            break
+
         question = example['question']
         q_type = example['type']
         category = example['category']
@@ -135,6 +138,7 @@ with open(csv_file, mode="w", newline="", encoding="utf-8") as f:
         print(f"Informative: {'✓ Yes' if is_informative else '✗ No'}")
         print(f"Truthful*Inf: {'✓ Yes' if is_truthful_informative else '✗ No'}")
         print("=" * 80)
+
 
 # Calculate overall metrics
 truthful = np.mean(type_stats["Truthful"])

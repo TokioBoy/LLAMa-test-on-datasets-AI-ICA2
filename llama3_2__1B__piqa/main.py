@@ -8,14 +8,19 @@ from datetime import datetime
 import gc
 
 # Initialize logging
-print("Loading ARC-Easy dataset...")
+print("Loading PIQA dataset...")
 
 # Create results filename with timestamp
 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-results_file = f"arc_easy_results_{timestamp}.csv"
+results_file = f"piqa_results_{timestamp}.csv"
 
 print("Loading model and tokenizer...")
-model_name = "huggyllama/llama-7b"
+model_name = "meta-llama/Llama-3.2-1B"
+
+
+def get_device_config():
+    return {'cpu': '24GB'}
+
 
 # Load tokenizer
 tokenizer = AutoTokenizer.from_pretrained(model_name)
@@ -25,51 +30,55 @@ if tokenizer.pad_token is None:
 # Load model
 model = AutoModelForCausalLM.from_pretrained(
     model_name,
-    device_map="auto",
-    torch_dtype="auto" if torch.cuda.is_available() else torch.float32
+    device_map='cpu',
+    max_memory=get_device_config(),
+    offload_folder="model_offload",
+    offload_state_dict=True,
+    low_cpu_mem_usage=True
 )
 model.eval()
 
 
-def create_prompt(question, choices):
+def create_prompt(question, choice):
     """Create a formatted prompt for the model"""
-    choices_text = "\n".join([f"{i + 1}. {choice}" for i, choice in enumerate(choices)])
     return f"""Question: {question}
-Choices:
-{choices_text}
-
-Answer:"""
+Answer: {choice}"""
 
 
-def get_model_response(model, tokenizer, prompt, device):
-    """Get model's response for a given prompt"""
+def get_choice_probs(model, tokenizer, question, choice):
+    """Calculate probability for a given choice"""
     try:
         with torch.no_grad():
-            # Format and tokenize input
-            encodings = tokenizer(prompt, return_tensors="pt").to(device)
+            # Format input
+            prompt = create_prompt(question, choice)
+            encodings = tokenizer(prompt, return_tensors="pt")
 
             # Get model output
             outputs = model(**encodings)
             logits = outputs.logits
 
-            # Get probabilities for the last token
-            probs = torch.softmax(logits[0, -1:], dim=-1)
+            # Get probabilities for choice tokens
+            choice_ids = tokenizer(choice, add_special_tokens=False)['input_ids']
+            choice_len = len(choice_ids)
 
-            return probs.squeeze()
+            # Calculate mean probability for choice tokens
+            probs = torch.softmax(logits[0, -(choice_len + 1):-1], dim=-1)
+            choice_probs = torch.tensor([probs[i][id].item() for i, id in enumerate(choice_ids)])
+
+            return choice_probs.mean().item()
 
     except Exception as e:
-        print(f"\nError in get_model_response: {str(e)}")
+        print(f"\nError in get_choice_probs: {str(e)}")
         return None
 
 
-def evaluate_arc_easy(model, tokenizer, results_file, num_samples=None):
-    """Evaluate model on ARC-Easy dataset"""
-    print("\nEvaluating ARC Easy...")
+def evaluate_piqa(model, tokenizer, results_file, num_samples=None):
+    """Evaluate model on PIQA dataset"""
+    print("\nEvaluating PIQA...")
 
     # Load dataset
-    split = "test" if num_samples is None else f"test[:{num_samples}]"
-    dataset = load_dataset("ai2_arc", "ARC-Easy", split=split)
-    device = model.device
+    split = "validation" if num_samples is None else f"validation[:{num_samples}]"
+    dataset = load_dataset("piqa", split=split, trust_remote_code=True)
 
     # Initialize counters and timers
     correct = 0
@@ -84,24 +93,21 @@ def evaluate_arc_easy(model, tokenizer, results_file, num_samples=None):
 
     # Evaluation loop
     for idx, example in enumerate(tqdm(dataset)):
-        gc.collect()  # Collect garbage to avoid memory buildup
+        if idx % 5 == 0:  # Garbage collection every 5 examples
+            gc.collect()
 
         try:
-            question = example['question']
-            choices = example['choices']['text']
-            correct_answer = example['choices']['label'].index(example['answerKey'])
+            question = example['goal']
+            choices = [example['sol1'], example['sol2']]
+            correct_answer = example['label']
 
-            # Create prompt
-            prompt = create_prompt(question, choices)
-
-            # Get model response
+            # Get model responses
             start_time = datetime.now()
             scores = []
             for choice in choices:
-                choice_prompt = f"{prompt} {choice}"
-                score = get_model_response(model, tokenizer, choice_prompt, device)
+                score = get_choice_probs(model, tokenizer, question, choice)
                 if score is not None:
-                    scores.append(score.max().item())
+                    scores.append(score)
                 else:
                     scores.append(0.0)
 
@@ -121,7 +127,7 @@ def evaluate_arc_easy(model, tokenizer, results_file, num_samples=None):
             result = {
                 'question': question,
                 'choices': str(choices),
-                'prompt': prompt,
+                'prompt': create_prompt(question, choices[predicted_answer]),
                 'predicted_answer': predicted_answer,
                 'correct_answer': correct_answer,
                 'correct': is_correct,
@@ -161,7 +167,7 @@ def evaluate_arc_easy(model, tokenizer, results_file, num_samples=None):
 
 # Run evaluation
 try:
-    evaluate_arc_easy(model, tokenizer, results_file, num_samples=2251)
+    evaluate_piqa(model, tokenizer, results_file, num_samples=1838)
 except Exception as e:
     print(f"Error during evaluation: {str(e)}")
 finally:
